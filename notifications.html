@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Notifications - ConnectHub</title>
+    <link rel="stylesheet" href="frontend/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.development.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.development.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.26.0/babel.min.js"></script>
+    <script src="frontend/js/common.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+   function NavigationSidebar() {
+    const userId = localStorage.getItem('userId');
+    const pseudo = localStorage.getItem('pseudo') || 'Utilisateur';
+    const avatarUrl = localStorage.getItem('avatar') ? `uploads/avatars/${localStorage.getItem('avatar')}` : null;
+    const [imgError, setImgError] = React.useState(false);
+    return (
+        <aside className="sidebar">
+            <div className="sidebar-header"><div className="hamburger"><i className="fas fa-bars"></i></div></div>
+            <div className="profil-container">
+                {avatarUrl && !imgError ? (
+                    <img src={avatarUrl} className="avatar" onError={() => setImgError(true)} />
+                ) : (
+                    <div className="avatar"><i className="fas fa-user"></i></div>
+                )}
+                <span className="profil-nom">{pseudo}</span>
+            </div>
+            <ul className="nav-principale">
+                <li className="nav-item"><a href="accueil.html"><span className="nav-icon"><i className="fas fa-home"></i></span><span>ACCUEIL</span></a></li>
+                <li className="nav-item"><a href="communautes.html"><span className="nav-icon"><i className="fas fa-users"></i></span><span>COMMUNAUTES</span></a></li>
+                <li className="nav-item"><a href="messages.html"><span className="nav-icon"><i className="fas fa-envelope"></i></span><span>MESSAGERIE</span></a></li>
+                <li className="nav-item"><a href="notifications.html"><span className="nav-icon"><i className="fas fa-bell"></i></span><span>NOTIFICATIONS</span></a></li>
+                <li className="nav-item"><a href={`profil.html?id=${userId}`}><span className="nav-icon"><i className="fas fa-user"></i></span><span>PROFIL</span></a></li>
+                <li className="nav-item"><a href="parametres.html"><span className="nav-icon"><i className="fas fa-sliders-h"></i></span><span>PARAMETRES</span></a></li>
+                <li className="nav-item"><a href="recherche.html"><span className="nav-icon"><i className="fas fa-search"></i></span><span>RECHERCHE</span></a></li>
+                <li className="nav-item"><a href="logout.html"><span className="nav-icon"><i className="fas fa-sign-out-alt"></i></span><span>DECONNEXION</span></a></li>
+            </ul>
+        </aside>
+    );
+}
+
+    function Notifications() {
+        const [notifs, setNotifs] = React.useState([]);
+        const load = async () => { setNotifs(await apiCall('get_notifications')); };
+        const markRead = async (id) => { const fd = new FormData(); fd.append('notif_id', id); await apiCall('mark_notification_read', 'POST', fd); load(); };
+        React.useEffect(() => { load(); }, []);
+        return (
+            <div className="app-layout">
+                <NavigationSidebar />
+                <div className="content-wrapper">
+                    <main className="feed">
+                        <h2>Notifications</h2>
+                        {notifs.map(n => (
+                            <div key={n.id} className={`notif-item ${!n.lu ? 'unread' : ''}`} onClick={() => markRead(n.id)}>
+                                {n.contenu}
+                            </div>
+                        ))}
+                        {notifs.length === 0 && <p>Aucune notification.</p>}
+                    </main>
+                </div>
+            </div>
+        );
+    }
+    apiCall('get_profile').then(() => ReactDOM.createRoot(document.getElementById('root')).render(<Notifications />)).catch(() => window.location='login.html');
+</script>
+</body>
+</html>

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Messages - ConnectHub</title>
+    <link rel="stylesheet" href="frontend/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.development.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.development.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.26.0/babel.min.js"></script>
+    <script src="frontend/js/common.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+    function NavigationSidebar() {
+        const userId = localStorage.getItem('userId');
+        const pseudo = localStorage.getItem('pseudo') || 'Utilisateur';
+        const avatarUrl = localStorage.getItem('avatar') ? `uploads/avatars/${localStorage.getItem('avatar')}` : null;
+        const [imgError, setImgError] = React.useState(false);
+        return (
+            <aside className="sidebar">
+                <div className="sidebar-header"><div className="hamburger"><i className="fas fa-bars"></i></div></div>
+                <div className="profil-container">
+                    {avatarUrl && !imgError ? <img src={avatarUrl} className="avatar" onError={() => setImgError(true)} /> : <div className="avatar"><i className="fas fa-user"></i></div>}
+                    <span className="profil-nom">{pseudo}</span>
+                </div>
+                <ul className="nav-principale">
+                    <li className="nav-item"><a href="accueil.html"><span className="nav-icon"><i className="fas fa-home"></i></span><span>ACCUEIL</span></a></li>
+                    <li className="nav-item"><a href="communautes.html"><span className="nav-icon"><i className="fas fa-users"></i></span><span>COMMUNAUTES</span></a></li>
+                    <li className="nav-item"><a href="explorer.html"><span className="nav-icon"><i className="fas fa-compass"></i></span><span>EXPLORER</span></a></li>
+                    <li className="nav-item"><a href="abonnements.html"><span className="nav-icon"><i className="fas fa-user-friends"></i></span><span>ABONNEMENTS</span></a></li>
+                    <li className="nav-item"><a href="messages.html"><span className="nav-icon"><i className="fas fa-envelope"></i></span><span>MESSAGERIE</span></a></li>
+                    <li className="nav-item"><a href="notifications.html"><span className="nav-icon"><i className="fas fa-bell"></i></span><span>NOTIFICATIONS</span></a></li>
+                    <li className="nav-item"><a href={`profil.html?id=${userId}`}><span className="nav-icon"><i className="fas fa-user"></i></span><span>PROFIL</span></a></li>
+                    <li className="nav-item"><a href="parametres.html"><span className="nav-icon"><i className="fas fa-sliders-h"></i></span><span>PARAMETRES</span></a></li>
+                    <li className="nav-item"><a href="recherche.html"><span className="nav-icon"><i className="fas fa-search"></i></span><span>RECHERCHE</span></a></li>
+                    <li className="nav-item"><a href="logout.html"><span className="nav-icon"><i className="fas fa-sign-out-alt"></i></span><span>DECONNEXION</span></a></li>
+                </ul>
+            </aside>
+        );
+    }
+
+    function Messages() {
+        const [convs, setConvs] = React.useState([]);
+        const [selectedConv, setSelectedConv] = React.useState(null);
+        const [msgs, setMsgs] = React.useState([]);
+        const [newMsg, setNewMsg] = React.useState('');
+        const [searchPseudo, setSearchPseudo] = React.useState('');
+        const [suggestions, setSuggestions] = React.useState([]);
+        const [showGroupModal, setShowGroupModal] = React.useState(false);
+        const [groupName, setGroupName] = React.useState('');
+        const [groupMembers, setGroupMembers] = React.useState([]);
+        const [following, setFollowing] = React.useState([]);
+
+        const loadConvs = async () => { setConvs(await apiCall('get_conversations')); };
+        const loadMsgs = async (convId) => { setMsgs(await apiCall(`get_messages&conv_id=${convId}`)); };
+        const loadFollowing = async () => { setFollowing(await apiCall('get_following')); };
+
+        React.useEffect(() => { loadConvs(); loadFollowing(); }, []);
+
+        const searchUsers = async (query) => {
+            if (query.length < 2) { setSuggestions([]); return; }
+            const data = await apiCall(`search&q=${query}`);
+            setSuggestions(data.users);
+        };
+        const startConversation = async (userId) => {
+            const fd = new FormData(); fd.append('destinataire_id', userId); fd.append('contenu', '');
+            await apiCall('send_message', 'POST', fd);
+            loadConvs();
+            setSearchPseudo('');
+            setSuggestions([]);
+        };
+        const openConversation = (conv) => {
+            setSelectedConv(conv);
+            loadMsgs(conv.id);
+        };
+        const sendMsg = async () => {
+            if (selectedConv && newMsg) {
+                const fd = new FormData(); fd.append('conversation_id', selectedConv.id); fd.append('contenu', newMsg);
+                await apiCall('send_message_to_conversation', 'POST', fd);
+                setNewMsg('');
+                loadMsgs(selectedConv.id);
+                loadConvs();
+            }
+        };
+        const createGroup = async () => {
+            if (!groupName.trim() || groupMembers.length === 0) return;
+            const fd = new FormData();
+            fd.append('nom_groupe', groupName);
+            fd.append('membres', JSON.stringify(groupMembers));
+            await apiCall('create_group_conversation', 'POST', fd);
+            setShowGroupModal(false);
+            setGroupName('');
+            setGroupMembers([]);
+            loadConvs();
+        };
+        const toggleMember = (userId) => {
+            if (groupMembers.includes(userId)) setGroupMembers(groupMembers.filter(id => id !== userId));
+            else setGroupMembers([...groupMembers, userId]);
+        };
+        return (
+            <div className="app-layout">
+                <NavigationSidebar />
+                <div className="content-wrapper">
+                    <main className="feed">
+                        <h2>Messagerie</h2>
+                        <div style={{display:'flex', gap:'1rem', marginBottom:'1rem'}}>
+                            <div style={{flex:1}}>
+                                <input type="text" placeholder="Pseudo du destinataire" value={searchPseudo} onChange={e => { setSearchPseudo(e.target.value); searchUsers(e.target.value); }} />
+                                {suggestions.length > 0 && (
+                                    <div className="suggestions" style={{background:'white', border:'1px solid #ccc', borderRadius:'12px', marginTop:'4px'}}>
+                                        {suggestions.map(u => <div key={u.id} onClick={() => startConversation(u.id)} style={{padding:'8px', cursor:'pointer'}}>{u.pseudo}</div>)}
+                                    </div>
+                                )}
+                            </div>
+                            <button className="btn-publier" onClick={() => setShowGroupModal(true)}>Nouveau groupe</button>
+                        </div>
+                        <h3>Conversations</h3>
+                        {convs.map(c => (
+                            <div key={c.id} className="conv-card" onClick={() => openConversation(c)} style={{cursor:'pointer', marginBottom:'12px'}}>
+                                <strong>{c.type === 'group' ? c.nom_groupe : c.other_pseudo}</strong><br/>
+                                <small>{c.last_message}</small>
+                            </div>
+                        ))}
+                        {selectedConv && (
+                            <div className="create-post" style={{marginTop:'24px'}}>
+                                <h3>{selectedConv.type === 'group' ? selectedConv.nom_groupe : `Conversation avec ${selectedConv.other_pseudo}`}</h3>
+                                <div style={{maxHeight:'300px', overflowY:'auto', marginBottom:'10px'}}>
+                                    {msgs.map(m => <div key={m.id}><strong>{m.pseudo}</strong> : {m.contenu}</div>)}
+                                </div>
+                                <input type="text" value={newMsg} onChange={e => setNewMsg(e.target.value)} placeholder="Votre message" />
+                                <button className="btn-publier" onClick={sendMsg}>Envoyer</button>
+                            </div>
+                        )}
+                    </main>
+                </div>
+                {showGroupModal && (
+                    <div className="modal" onClick={() => setShowGroupModal(false)}>
+                        <div className="modal-content" onClick={e => e.stopPropagation()}>
+                            <h3>Créer un groupe</h3>
+                            <input type="text" placeholder="Nom du groupe" value={groupName} onChange={e => setGroupName(e.target.value)} style={{width:'100%', marginBottom:'1rem'}} />
+                            <h4>Membres (amis)</h4>
+                            {following.map(u => (
+                                <label key={u.id} style={{display:'block', margin:'8px 0'}}>
+                                    <input type="checkbox" checked={groupMembers.includes(u.id)} onChange={() => toggleMember(u.id)} /> {u.pseudo}
+                                </label>
+                            ))}
+                            <div style={{display:'flex', gap:'1rem', marginTop:'1rem'}}>
+                                <button className="btn-publier" onClick={createGroup}>Créer</button>
+                                <button className="btn-secondaire" onClick={() => setShowGroupModal(false)}>Annuler</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    }
+    apiCall('get_profile').then(() => ReactDOM.createRoot(document.getElementById('root')).render(<Messages />)).catch(() => window.location='login.html');
+</script>
+</body>
+</html>

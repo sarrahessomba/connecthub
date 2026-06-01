@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Connexion - ConnectHub</title>
+    <link rel="stylesheet" href="frontend/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.development.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.development.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.26.0/babel.min.js"></script>
+    <script src="frontend/js/common.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+    const { useState } = React;
+    function Login() {
+        const [identifiant, setIdentifiant] = useState('');
+        const [password, setPassword] = useState('');
+        const [message, setMessage] = useState({ text: '', type: '' });
+        const handleSubmit = async (e) => {
+            e.preventDefault();
+            const fd = new FormData();
+            fd.append('identifiant', identifiant);
+            fd.append('password', password);
+            try {
+                const data = await apiCall('login', 'POST', fd);
+                if (data.success) window.location.href = 'accueil.html';
+                else setMessage({ text: data.error, type: 'error' });
+            } catch (err) {
+                setMessage({ text: 'Erreur réseau', type: 'error' });
+            }
+        };
+        return (
+            <div className="auth-container">
+                <div className="auth-card">
+                    <h1>ConnectHub</h1>
+                    <h2>Connexion</h2>
+                    <form onSubmit={handleSubmit}>
+                        <input type="text" placeholder="Pseudo ou email" value={identifiant} onChange={e => setIdentifiant(e.target.value)} required />
+                        <input type="password" placeholder="Mot de passe" value={password} onChange={e => setPassword(e.target.value)} required />
+                        <button type="submit">Se connecter</button>
+                    </form>
+                    {message.text && <div className={`message ${message.type}`}>{message.text}</div>}
+                    <p><a href="register.html">Pas encore de compte ? Inscription</a></p>
+                    <p><a href="forgot-password.html">Mot de passe oublié ?</a></p>
+                </div>
+            </div>
+        );
+    }
+    ReactDOM.createRoot(document.getElementById('root')).render(<Login />);
+</script>
+</body>
+</html>

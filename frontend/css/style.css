@@ -1,0 +1,150 @@
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, 'Segoe UI', monospace; }
+body { background: #F7D9FC; color: #25104D; }
+.app-layout { display: flex; gap: 16px; }
+.sidebar { background: #25104D; border-radius: 20px; margin: 12px 0 12px 12px; width: 80px; transition: width 0.2s; display: flex; flex-direction: column; height: calc(100vh - 24px); position: sticky; top: 12px; overflow: hidden; }
+.sidebar:hover { width: 260px; }
+.sidebar-header { display: flex; justify-content: flex-end; padding: 16px; }
+.hamburger { font-size: 26px; color: white; cursor: default; }
+.profil-container { display: flex; flex-direction: column; align-items: center; padding: 16px 0; border-bottom: 1px solid rgba(255,255,255,0.2); }
+.avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; background: #FAB940; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #25104D; }
+.profil-nom { margin-top: 8px; font-weight: 500; font-size: 14px; white-space: nowrap; display: none; color: white; }
+.sidebar:hover .profil-nom { display: block; }
+.nav-principale { list-style: none; margin-top: 16px; flex: 1; }
+.nav-item { display: flex; align-items: center; justify-content: center; gap: 13px; cursor: pointer; transition: 0.2s; white-space: nowrap; border-radius: 30px; margin: 3px 8px; padding: 11px 0; color: white; }
+.nav-item:hover { background: #C2286B; }
+.nav-icon { font-size: 22px; width: 32px; text-align: center; color: white; }
+.nav-item span:last-child { display: none; }
+.sidebar:hover .nav-item { justify-content: flex-start; padding: 11px 16px; }
+.sidebar:hover .nav-item span:last-child { display: inline; }
+.nav-item a { display: flex; align-items: center; gap: 13px; text-decoration: none; color: white; width: 100%; justify-content: center; }
+.sidebar:hover .nav-item a { justify-content: flex-start; }
+.content-wrapper { flex: 1; display: flex; gap: 24px; padding: 32px 32px 32px 0; max-width: 1200px; margin: 0 auto; }
+.feed { flex: 1; max-width: 700px; margin: 0 auto; }
+.create-post, .post, .tendances, .recommandations, .community-card, .conv-card, .notif-item, .profil-card, .param-card, .report-item { background: white; border-radius: 20px; padding: 16px; margin-bottom: 24px; border: 1px solid rgba(91,28,46,0.1); box-shadow: 0 2px 6px rgba(0,0,0,0.02); }
+.tendances h3, .recommandations h3 { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.hashtag { display: block; padding: 6px 0; font-size: 14px; color: #C2286B; cursor: pointer; }
+.hashtag:hover { text-decoration: underline; color: #FAB940; }
+.compte-reco { display: flex; align-items: center; gap: 13px; margin-bottom: 16px; }
+.reco-avatar { width: 40px; height: 40px; background: #FAB940; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+.btn-suivre { background: none; border: 1px solid #C2286B; padding: 4px 12px; border-radius: 30px; cursor: pointer; font-size: 12px; transition: 0.2s; }
+.btn-suivre:hover { background: #C2286B; color: white; }
+.btn-suivre.suivi { background: #C2286B; color: white; }
+.post-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; position: relative; }
+.post-actions { display: flex; gap: 16px; margin-top: 12px; padding-top: 8px; border-top: 1px solid #efefef; flex-wrap: wrap; }
+.post-actions button { background: none; border: none; cursor: pointer; display: flex; align-items: center; gap: 5px; color: #25104D; }
+.post-actions button:hover { color: #C2286B; }
+.post-media { max-width: 100%; border-radius: 16px; margin-top: 8px; }
+.create-post textarea, .create-post input, .create-post select { width: 100%; margin: 8px 0; padding: 10px; border: 1px solid rgba(91,28,46,0.3); border-radius: 16px; }
+.btn-publier { background: #FAB940; border: none; padding: 8px 20px; border-radius: 40px; font-weight: bold; cursor: pointer; }
+.btn-publier:hover { background: #C2286B; color: white; }
+.btn-secondaire { background: none; border: 1px solid #C2286B; padding: 8px 20px; border-radius: 40px; cursor: pointer; }
+.btn-secondaire:hover { background: #C2286B; color: white; }
+.comments { margin-top: 12px; padding-top: 8px; border-top: 1px solid #efefef; }
+.comments input { width: 70%; margin-right: 8px; padding: 6px; border-radius: 30px; border: 1px solid #ccc; }
+.pub-menu { position: relative; margin-left: auto; cursor: pointer; font-size: 20px; }
+.popup-menu { position: absolute; right: 0; top: 20px; background: white; border: 1px solid #ccc; border-radius: 8px; z-index: 10; min-width: 150px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+.popup-menu a { display: block; padding: 8px 12px; text-decoration: none; color: #25104D; font-size: 14px; border-bottom: 1px solid #eee; }
+.popup-menu a:last-child { border-bottom: none; }
+.popup-menu a:hover { background: #F8F4FF; color: #C2286B; }
+.modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+.modal-content { background: white; border-radius: 20px; padding: 24px; max-width: 500px; width: 90%; }
+.auth-container { width:100%; max-width:380px; margin:auto; padding:2rem; }
+.auth-card { background:white; border-radius:20px; padding:2rem; text-align:center; }
+.auth-card input, .auth-card button { width:100%; margin:0.5rem 0; padding:0.75rem; border-radius:30px; }
+.auth-card button { background:#FAB940; border:none; font-weight:bold; }
+@media (max-width: 900px) { .content-wrapper { flex-direction: column; } .feed { max-width: 100%; } }
+/* Amélioration du feed : cartes, espacements, réactivité */
+.post {
+    transition: box-shadow 0.2s;
+}
+.post:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.post-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+.post-content {
+    font-size: 0.95rem;
+    line-height: 1.4;
+    margin-bottom: 8px;
+}
+.post-actions {
+    display: flex;
+    gap: 1rem;
+    padding-top: 8px;
+    border-top: 1px solid #efefef;
+    flex-wrap: wrap;
+}
+.post-actions button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.9rem;
+    color: #25104D;
+}
+.post-actions button:hover {
+    color: #C2286B;
+}
+.post-media {
+    max-width: 100%;
+    border-radius: 16px;
+    margin: 8px 0;
+}
+.comments {
+    background: #f9f9f9;
+    border-radius: 16px;
+    padding: 12px;
+    margin-top: 12px;
+}
+.comments input {
+    flex: 1;
+    padding: 8px 12px;
+    border-radius: 30px;
+    border: 1px solid #ddd;
+}
+.comments button {
+    background: #FAB940;
+    border: none;
+    border-radius: 30px;
+    padding: 8px 16px;
+    margin-left: 8px;
+    cursor: pointer;
+}
+.comments button:hover {
+    background: #C2286B;
+    color: white;
+}
+/* Pour la page d'aide et formulaires */
+form input, form textarea, form select {
+    width: 100%;
+    margin-bottom: 1rem;
+}
+.btn-publier, .btn-secondaire {
+    padding: 8px 20px;
+    border-radius: 40px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.2s;
+}
+.btn-publier {
+    background: #FAB940;
+    border: none;
+}
+.btn-publier:hover {
+    background: #C2286B;
+    color: white;
+}
+.btn-secondaire {
+    background: none;
+    border: 1px solid #C2286B;
+}
+.btn-secondaire:hover {
+    background: #C2286B;
+    color: white;
+}

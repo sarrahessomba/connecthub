@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Profil - ConnectHub</title>
+    <link rel="stylesheet" href="frontend/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.development.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.development.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.26.0/babel.min.js"></script>
+    <script src="frontend/js/common.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+   function NavigationSidebar() {
+    const userId = localStorage.getItem('userId');
+    const pseudo = localStorage.getItem('pseudo') || 'Utilisateur';
+    const avatarUrl = localStorage.getItem('avatar') ? `uploads/avatars/${localStorage.getItem('avatar')}` : null;
+    const [imgError, setImgError] = React.useState(false);
+    return (
+        <aside className="sidebar">
+            <div className="sidebar-header"><div className="hamburger"><i className="fas fa-bars"></i></div></div>
+            <div className="profil-container">
+                {avatarUrl && !imgError ? (
+                    <img src={avatarUrl} className="avatar" onError={() => setImgError(true)} />
+                ) : (
+                    <div className="avatar"><i className="fas fa-user"></i></div>
+                )}
+                <span className="profil-nom">{pseudo}</span>
+            </div>
+            <ul className="nav-principale">
+                <li className="nav-item"><a href="accueil.html"><span className="nav-icon"><i className="fas fa-home"></i></span><span>ACCUEIL</span></a></li>
+                <li className="nav-item"><a href="communautes.html"><span className="nav-icon"><i className="fas fa-users"></i></span><span>COMMUNAUTES</span></a></li>
+                <li className="nav-item"><a href="messages.html"><span className="nav-icon"><i className="fas fa-envelope"></i></span><span>MESSAGERIE</span></a></li>
+                <li className="nav-item"><a href="notifications.html"><span className="nav-icon"><i className="fas fa-bell"></i></span><span>NOTIFICATIONS</span></a></li>
+                <li className="nav-item"><a href={`profil.html?id=${userId}`}><span className="nav-icon"><i className="fas fa-user"></i></span><span>PROFIL</span></a></li>
+                <li className="nav-item"><a href="parametres.html"><span className="nav-icon"><i className="fas fa-sliders-h"></i></span><span>PARAMETRES</span></a></li>
+                <li className="nav-item"><a href="recherche.html"><span className="nav-icon"><i className="fas fa-search"></i></span><span>RECHERCHE</span></a></li>
+                <li className="nav-item"><a href="logout.html"><span className="nav-icon"><i className="fas fa-sign-out-alt"></i></span><span>DECONNEXION</span></a></li>
+            </ul>
+        </aside>
+    );
+}
+    function Publication({ post, onLike, onDelete, onComment }) {
+        const [showComments, setShowComments] = React.useState(false);
+        const [comments, setComments] = React.useState([]);
+        const [newComment, setNewComment] = React.useState('');
+        const loadComments = async () => { setComments(await apiCall(`get_comments&post_id=${post.id}`)); };
+        const handleComment = async () => {
+            const fd = new FormData(); fd.append('post_id', post.id); fd.append('contenu', newComment);
+            await apiCall('comment', 'POST', fd);
+            setNewComment(''); loadComments(); onComment();
+        };
+        const handleBookmark = async () => {
+            const fd = new FormData(); fd.append('post_id', post.id);
+            if (post.bookmarked) await apiCall('unbookmark', 'POST', fd);
+            else await apiCall('bookmark', 'POST', fd);
+            onComment();
+        };
+        const [avatarError, setAvatarError] = React.useState(false);
+        return (
+            <div className="post">
+                <div className="post-header">
+                    {post.avatar && !avatarError ? <img src={`uploads/avatars/${post.avatar}`} className="avatar" style={{width:40,height:40}} onError={() => setAvatarError(true)} /> : <div className="avatar" style={{width:40,height:40}}><i className="fas fa-user"></i></div>}
+                    <a href={`profil.html?id=${post.user_id}`}><b>{post.pseudo}</b></a>
+                </div>
+                <div className="post-content">{post.contenu_texte}</div>
+                {post.fichier_media && (post.type_media === 'image' ? <img src={`uploads/medias/${post.fichier_media}`} className="post-media" /> : <video src={`uploads/medias/${post.fichier_media}`} controls className="post-media" />)}
+                {post.lien && <a href={post.lien} target="_blank">{post.lien}</a>}
+                {post.type_media === 'sondage' && post.sondage && (
+                    <div className="poll">
+                        <p><strong>{post.sondage[0].question}</strong></p>
+                        {post.sondage.map(opt => <button key={opt.opt_id} onClick={() => alert('Vote à implémenter')}>{opt.option_texte} ({opt.votes} votes)</button>)}
+                    </div>
+                )}
+                <div className="post-actions">
+                    <button onClick={() => onLike(post.id)}><i className="fas fa-heart"></i> {post.likes}</button>
+                    <button onClick={() => { setShowComments(!showComments); if(!showComments) loadComments(); }}><i className="fas fa-comment"></i> {post.commentaires}</button>
+                    <button onClick={handleBookmark}>{post.bookmarked ? <i className="fas fa-bookmark"></i> : <i className="far fa-bookmark"></i>}</button>
+                    {localStorage.getItem('userId') == post.user_id && <button onClick={() => onDelete(post.id)}><i className="fas fa-trash"></i></button>}
+                </div>
+                {showComments && (
+                    <div className="comments">
+                        {comments.map(c => <div key={c.id}><strong>{c.pseudo}</strong> {c.contenu}</div>)}
+                        <input type="text" placeholder="Ajouter un commentaire..." value={newComment} onChange={e => setNewComment(e.target.value)} />
+                        <button onClick={handleComment}>Envoyer</button>
+                    </div>
+                )}
+            </div>
+        );
+    }
+    function Profil() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const profileId = urlParams.get('id') || localStorage.getItem('userId');
+        const [profile, setProfile] = React.useState(null);
+        const [isFollowing, setIsFollowing] = React.useState(false);
+        const [posts, setPosts] = React.useState([]);
+        const [loading, setLoading] = React.useState(true);
+        const loadProfile = async () => {
+            try {
+                const data = await apiCall(`get_profile&id=${profileId}`);
+                setProfile(data);
+                setIsFollowing(data.is_following);
+                const userPosts = await apiCall(`get_user_posts&user_id=${profileId}`);
+                setPosts(userPosts);
+            } catch (err) { console.error(err); } finally { setLoading(false); }
+        };
+        React.useEffect(() => { loadProfile(); }, [profileId]);
+        const handleFollow = async () => { const fd = new FormData(); fd.append('follow_id', profileId); await apiCall('follow', 'POST', fd); setIsFollowing(true); };
+        const handleUnfollow = async () => { const fd = new FormData(); fd.append('follow_id', profileId); await apiCall('unfollow', 'POST', fd); setIsFollowing(false); };
+        const bloquerUtilisateur = async () => {
+            if (profile && confirm(`Bloquer ${profile.pseudo} ?`)) {
+                const fd = new FormData(); fd.append('user_id', profileId); await apiCall('block_user', 'POST', fd);
+                alert('Utilisateur bloqué. Retour à l\'accueil.'); window.location.href = 'accueil.html';
+            }
+        };
+        const handleLike = async (postId) => { const fd = new FormData(); fd.append('post_id', postId); await apiCall('like_post', 'POST', fd); loadProfile(); };
+        const handleDelete = async (postId) => { const fd = new FormData(); fd.append('post_id', postId); await apiCall('delete_post', 'POST', fd); loadProfile(); };
+        if (loading || !profile) return <div className="app-layout"><NavigationSidebar /><div className="content-wrapper">Chargement...</div></div>;
+        return (
+            <div className="app-layout">
+                <NavigationSidebar />
+                <div className="content-wrapper">
+                    <main className="feed">
+                        <div className="post" style={{textAlign:'center'}}>
+                            {profile.avatar ? <img src={`uploads/avatars/${profile.avatar}`} className="avatar" style={{width:100,height:100}} /> : <div className="avatar" style={{width:100,height:100}}><i className="fas fa-user"></i></div>}
+                            <h2>{profile.pseudo}</h2>
+                            <p>{profile.bio || 'Aucune bio'}</p>
+                            {profile.id != localStorage.getItem('userId') ? (
+                                <div style={{display:'flex', gap:'10px', justifyContent:'center', marginTop:'16px'}}>
+                                    <button onClick={isFollowing ? handleUnfollow : handleFollow} className="btn-publier">{isFollowing ? 'Ne plus suivre' : 'Suivre'}</button>
+                                    <button onClick={bloquerUtilisateur} className="btn-secondaire">Bloquer</button>
+                                </div>
+                            ) : <a href="parametres.html"><button className="btn-publier">Modifier mon profil</button></a>}
+                        </div>
+                        <h3>Publications de {profile.pseudo}</h3>
+                        {posts.length === 0 && <p>Aucune publication.</p>}
+                        {posts.map(post => <Publication key={post.id} post={post} onLike={handleLike} onDelete={handleDelete} onComment={loadProfile} />)}
+                    </main>
+                </div>
+            </div>
+        );
+    }
+    apiCall('get_profile').then(() => ReactDOM.createRoot(document.getElementById('root')).render(<Profil />)).catch(() => window.location='login.html');
+</script>
+</body>
+</html>

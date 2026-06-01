@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Accueil - ConnectHub</title>
+    <link rel="stylesheet" href="frontend/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.development.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.development.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.26.0/babel.min.js"></script>
+    <script src="frontend/js/common.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+    function NavigationSidebar() {
+        const userId = localStorage.getItem('userId');
+        const pseudo = localStorage.getItem('pseudo') || 'Utilisateur';
+        const avatarUrl = localStorage.getItem('avatar') ? `uploads/avatars/${localStorage.getItem('avatar')}` : null;
+        const [imgError, setImgError] = React.useState(false);
+        return (
+            <aside className="sidebar">
+                <div className="sidebar-header"><div className="hamburger"><i className="fas fa-bars"></i></div></div>
+                <div className="profil-container">
+                    {avatarUrl && !imgError ? <img src={avatarUrl} className="avatar" onError={() => setImgError(true)} /> : <div className="avatar"><i className="fas fa-user"></i></div>}
+                    <span className="profil-nom">{pseudo}</span>
+                </div>
+                <ul className="nav-principale">
+                    <li className="nav-item"><a href="accueil.html"><span className="nav-icon"><i className="fas fa-home"></i></span><span>ACCUEIL</span></a></li>
+                    <li className="nav-item"><a href="communautes.html"><span className="nav-icon"><i className="fas fa-users"></i></span><span>COMMUNAUTES</span></a></li>
+                    <li className="nav-item"><a href="messages.html"><span className="nav-icon"><i className="fas fa-envelope"></i></span><span>MESSAGERIE</span></a></li>
+                    <li className="nav-item"><a href="notifications.html"><span className="nav-icon"><i className="fas fa-bell"></i></span><span>NOTIFICATIONS</span></a></li>
+                    <li className="nav-item"><a href={`profil.html?id=${userId}`}><span className="nav-icon"><i className="fas fa-user"></i></span><span>PROFIL</span></a></li>
+                    <li className="nav-item"><a href="parametres.html"><span className="nav-icon"><i className="fas fa-sliders-h"></i></span><span>PARAMETRES</span></a></li>
+                    <li className="nav-item"><a href="recherche.html"><span className="nav-icon"><i className="fas fa-search"></i></span><span>RECHERCHE</span></a></li>
+                    <li className="nav-item"><a href="logout.html"><span className="nav-icon"><i className="fas fa-sign-out-alt"></i></span><span>DECONNEXION</span></a></li>
+                </ul>
+            </aside>
+        );
+    }
+
+    function RightSidebar() {
+        const [recommended, setRecommended] = React.useState([]);
+        const loadRecommended = async () => {
+            const staticUsers = [
+                { id: 2, pseudo: "sophie_m", nom: "Sophie Martin", avatar: "SM" },
+                { id: 3, pseudo: "thomas_dev", nom: "Thomas L.", avatar: "TL" }
+            ];
+            try {
+                const following = await apiCall('get_following');
+                const followingIds = following.map(f => f.id);
+                setRecommended(staticUsers.map(u => ({ ...u, isFollowing: followingIds.includes(u.id) })));
+            } catch (e) {
+                setRecommended(staticUsers.map(u => ({ ...u, isFollowing: false })));
+            }
+        };
+        const handleFollow = async (userId) => {
+            const fd = new FormData(); fd.append('follow_id', userId);
+            await apiCall('follow', 'POST', fd);
+            setRecommended(prev => prev.map(u => u.id === userId ? { ...u, isFollowing: true } : u));
+        };
+        const handleUnfollow = async (userId) => {
+            const fd = new FormData(); fd.append('follow_id', userId);
+            await apiCall('unfollow', 'POST', fd);
+            setRecommended(prev => prev.map(u => u.id === userId ? { ...u, isFollowing: false } : u));
+        };
+        React.useEffect(() => { loadRecommended(); }, []);
+        return (
+            <aside className="right-sidebar">
+                <div className="tendances">
+                    <h3><i className="fas fa-fire"></i> Tendance du moment</h3>
+                    <span className="hashtag"><i className="fas fa-hashtag"></i> ConnectHub</span>
+                    <span className="hashtag"><i className="fas fa-hashtag"></i> ArtNumerique</span>
+                </div>
+                <div className="recommandations">
+                    <h3><i className="fas fa-user-plus"></i> Comptes recommandés</h3>
+                    {recommended.map(user => (
+                        <div className="compte-reco" key={user.id}>
+                            <div className="reco-avatar">{user.avatar}</div>
+                            <div className="reco-info"><div className="reco-nom">{user.nom}</div><div className="reco-pseudo">@{user.pseudo}</div></div>
+                            {user.isFollowing ? <button className="btn-suivre suivi" onClick={() => handleUnfollow(user.id)}>Suivi</button> : <button className="btn-suivre" onClick={() => handleFollow(user.id)}>Suivre</button>}
+                        </div>
+                    ))}
+                </div>
+            </aside>
+        );
+    }
+
+    function Publication({ post, onLike, onDelete, onComment, onVote }) {
+        const [showComments, setShowComments] = React.useState(false);
+        const [comments, setComments] = React.useState([]);
+        const [newComment, setNewComment] = React.useState('');
+        const [showMenu, setShowMenu] = React.useState(false);
+        const menuRef = React.useRef();
+        React.useEffect(() => {
+            const handleClickOutside = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setShowMenu(false); };
+            document.addEventListener('click', handleClickOutside);
+            return () => document.removeEventListener('click', handleClickOutside);
+        }, []);
+        const loadComments = async () => { setComments(await apiCall(`get_comments&post_id=${post.id}`)); };
+        const handleComment = async () => {
+            const fd = new FormData(); fd.append('post_id', post.id); fd.append('contenu', newComment);
+            await apiCall('comment', 'POST', fd);
+            setNewComment(''); loadComments(); onComment();
+        };
+        const handleBookmark = async () => {
+            const fd = new FormData(); fd.append('post_id', post.id);
+            if (post.bookmarked) await apiCall('unbookmark', 'POST', fd);
+            else await apiCall('bookmark', 'POST', fd);
+            onComment();
+        };
+        const handleVote = async (optionId) => {
+            const fd = new FormData(); fd.append('option_id', optionId);
+            const data = await apiCall('vote_poll', 'POST', fd);
+            if (data.success) {
+                const updatedOptions = post.sondage.map(opt => opt.opt_id === optionId ? { ...opt, votes: data.votes } : opt);
+                onVote({ ...post, sondage: updatedOptions });
+            } else alert(data.error);
+        };
+        const bloquerUtilisateur = async () => {
+            if (confirm(`Bloquer ${post.pseudo} ?`)) {
+                const fd = new FormData(); fd.append('user_id', post.user_id);
+                await apiCall('block_user', 'POST', fd);
+                alert('Utilisateur bloqué. Rafraîchissement...');
+                window.location.reload();
+            }
+        };
+        const [avatarError, setAvatarError] = React.useState(false);
+        return (
+            <div className="post">
+                <div className="post-header">
+                    {post.avatar && !avatarError ? <img src={`uploads/avatars/${post.avatar}`} className="avatar" style={{width:40,height:40}} onError={() => setAvatarError(true)} /> : <div className="avatar" style={{width:40,height:40}}><i className="fas fa-user"></i></div>}
+                    <a href={`profil.html?id=${post.user_id}`}><b>{post.pseudo}</b></a>
+                    <div className="pub-menu" ref={menuRef}>
+                        <span onClick={() => setShowMenu(!showMenu)}>⋮</span>
+                        {showMenu && (
+                            <div className="popup-menu">
+                                <a href="#" onClick={(e) => { e.preventDefault(); window.location.href = `signaler.html?type=publication&id=${post.id}`; }}>Signaler</a>
+                                <a href="#" onClick={(e) => { e.preventDefault(); bloquerUtilisateur(); }}>Bloquer</a>
+                                <a href="#" onClick={(e) => { e.preventDefault(); navigator.clipboard.writeText(window.location.origin+'/accueil.html'); alert('Lien copié'); }}>Copier le lien</a>
+                                {localStorage.getItem('userId') == post.user_id && <a href="#" onClick={(e) => { e.preventDefault(); onDelete(post.id); }}>Supprimer</a>}
+                            </div>
+                        )}
+                    </div>
+                </div>
+                <div className="post-content">{post.contenu_texte}</div>
+                {post.fichier_media && (post.type_media === 'image' ? <img src={`uploads/medias/${post.fichier_media}`} className="post-media" /> : <video src={`uploads/medias/${post.fichier_media}`} controls className="post-media" />)}
+                {post.lien && <a href={post.lien} target="_blank">{post.lien}</a>}
+                {post.type_media === 'sondage' && post.sondage && (
+                    <div className="poll">
+                        <p><strong>{post.sondage[0].question}</strong></p>
+                        {post.sondage.map(opt => <button key={opt.opt_id} onClick={() => handleVote(opt.opt_id)}>{opt.option_texte} ({opt.votes} votes)</button>)}
+                    </div>
+                )}
+                <div className="post-actions">
+                    <button onClick={() => onLike(post.id)}><i className="fas fa-heart"></i> {post.likes}</button>
+                    <button onClick={() => { setShowComments(!showComments); if(!showComments) loadComments(); }}><i className="fas fa-comment"></i> {post.commentaires}</button>
+                    <button onClick={handleBookmark}>{post.bookmarked ? <i className="fas fa-bookmark"></i> : <i className="far fa-bookmark"></i>}</button>
+                </div>
+                {showComments && (
+                    <div className="comments">
+                        {comments.map(c => <div key={c.id}><strong>{c.pseudo}</strong> {c.contenu}</div>)}
+                        <input type="text" placeholder="Ajouter un commentaire..." value={newComment} onChange={e => setNewComment(e.target.value)} />
+                        <button onClick={handleComment}>Envoyer</button>
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+    function Accueil() {
+        const [posts, setPosts] = React.useState([]);
+        const [contenu, setContenu] = React.useState('');
+        const [type, setType] = React.useState('texte');
+        const [mediaFile, setMediaFile] = React.useState(null);
+        const [lien, setLien] = React.useState('');
+        const [sondageQuestion, setSondageQuestion] = React.useState('');
+        const [sondageOptions, setSondageOptions] = React.useState('Option1,Option2');
+        const loadFeed = async () => {
+            try {
+                const data = await apiCall('get_feed&type=personnel');
+                setPosts(data);
+            } catch (err) { console.error(err); }
+        };
+        React.useEffect(() => { loadFeed(); }, []);
+        const handleLike = async (postId) => { const fd = new FormData(); fd.append('post_id', postId); await apiCall('like_post', 'POST', fd); loadFeed(); };
+        const handleDelete = async (postId) => { const fd = new FormData(); fd.append('post_id', postId); await apiCall('delete_post', 'POST', fd); loadFeed(); };
+        const handleCreatePost = async (e) => {
+            e.preventDefault();
+            const fd = new FormData();
+            fd.append('contenu', contenu); fd.append('type', type);
+            if (type === 'lien') fd.append('lien', lien);
+            if (type === 'sondage') { fd.append('sondage_question', sondageQuestion); fd.append('sondage_options', JSON.stringify(sondageOptions.split(','))); }
+            if ((type === 'image' || type === 'video') && mediaFile) fd.append('media', mediaFile);
+            await apiCall('create_post', 'POST', fd);
+            setContenu(''); setMediaFile(null); setLien(''); setSondageQuestion(''); setSondageOptions('Option1,Option2');
+            loadFeed();
+        };
+        const handleVoteUpdate = (updatedPost) => { setPosts(prev => prev.map(p => p.id === updatedPost.id ? updatedPost : p)); };
+        return (
+            <div className="app-layout">
+                <NavigationSidebar />
+                <div className="content-wrapper">
+                    <main className="feed">
+                        <div className="create-post">
+                            <h3>Créer une publication</h3>
+                            <form onSubmit={handleCreatePost}>
+                                <textarea placeholder="Partagez votre art..." value={contenu} onChange={e => setContenu(e.target.value)}></textarea>
+                                <select value={type} onChange={e => setType(e.target.value)}>
+                                    <option value="texte">Texte</option><option value="image">Image</option><option value="video">Vidéo</option>
+                                    <option value="lien">Lien</option><option value="sondage">Sondage</option>
+                                </select>
+                                {(type === 'image' || type === 'video') && <input type="file" accept={type==='image'?'image/*':'video/*'} onChange={e => setMediaFile(e.target.files[0])} />}
+                                {type === 'lien' && <input type="url" placeholder="URL" value={lien} onChange={e => setLien(e.target.value)} />}
+                                {type === 'sondage' && (
+                                    <div>
+                                        <input type="text" placeholder="Question" value={sondageQuestion} onChange={e => setSondageQuestion(e.target.value)} />
+                                        <input type="text" placeholder="Options séparées par ," value={sondageOptions} onChange={e => setSondageOptions(e.target.value)} />
+                                    </div>
+                                )}
+                                <button type="submit" className="btn-publier">Publier</button>
+                            </form>
+                        </div>
+                        {posts.map(post => <Publication key={post.id} post={post} onLike={handleLike} onDelete={handleDelete} onComment={loadFeed} onVote={handleVoteUpdate} />)}
+                    </main>
+                    <RightSidebar />
+                </div>
+            </div>
+        );
+    }
+    apiCall('get_profile').then(profile => {
+        localStorage.setItem('userId', profile.id);
+        localStorage.setItem('pseudo', profile.pseudo);
+        localStorage.setItem('avatar', profile.avatar || '');
+        ReactDOM.createRoot(document.getElementById('root')).render(<Accueil />);
+    }).catch(() => window.location.href = 'login.html');
+</script>
+</body>
+</html>

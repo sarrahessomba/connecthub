@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Signaler - ConnectHub</title>
+    <link rel="stylesheet" href="frontend/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.development.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.development.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.26.0/babel.min.js"></script>
+    <script src="frontend/js/common.js"></script>
+    <style>body{background:#F7D9FC; display:flex; justify-content:center; align-items:center; height:100vh;}</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+    function Signaler() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const type = urlParams.get('type');
+        const id = urlParams.get('id');
+        const [motif, setMotif] = React.useState('');
+        const handleSubmit = async (e) => {
+            e.preventDefault();
+            const fd = new FormData();
+            if (type === 'publication') fd.append('publication_id', id);
+            else if (type === 'commentaire') fd.append('commentaire_id', id);
+            fd.append('motif', motif);
+            await apiCall('report', 'POST', fd);
+            alert('Signalement envoyé. Merci !');
+            window.location.href = 'accueil.html';
+        };
+        return (
+            <div style={{maxWidth:500, margin:'auto', background:'white', borderRadius:20, padding:'2rem'}}>
+                <h2>Signaler {type === 'publication' ? 'cette publication' : 'ce commentaire'}</h2>
+                <form onSubmit={handleSubmit}>
+                    <select value={motif} onChange={e => setMotif(e.target.value)} required style={{width:'100%', padding:'8px', margin:'8px 0'}}>
+                        <option value="">Choisissez un motif</option>
+                        <option value="contenu inapproprié">Contenu inapproprié</option>
+                        <option value="harcèlement">Harcèlement</option>
+                        <option value="spam">Spam</option>
+                        <option value="violence">Incitation à la violence</option>
+                        <option value="autre">Autre</option>
+                    </select>
+                    <button type="submit" className="btn-publier">Envoyer</button>
+                </form>
+            </div>
+        );
+    }
+    ReactDOM.createRoot(document.getElementById('root')).render(<Signaler />);
+</script>
+</body>
+</html>

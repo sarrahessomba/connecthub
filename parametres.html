@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Paramètres - ConnectHub</title>
+    <link rel="stylesheet" href="frontend/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.development.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.development.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.26.0/babel.min.js"></script>
+    <script src="frontend/js/common.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+    function NavigationSidebar() {
+        const userId = localStorage.getItem('userId');
+        const pseudo = localStorage.getItem('pseudo') || 'Utilisateur';
+        const avatarUrl = localStorage.getItem('avatar') ? `uploads/avatars/${localStorage.getItem('avatar')}` : null;
+        const [imgError, setImgError] = React.useState(false);
+        return (
+            <aside className="sidebar">
+                <div className="sidebar-header"><div className="hamburger"><i className="fas fa-bars"></i></div></div>
+                <div className="profil-container">
+                    {avatarUrl && !imgError ? <img src={avatarUrl} className="avatar" onError={() => setImgError(true)} /> : <div className="avatar"><i className="fas fa-user"></i></div>}
+                    <span className="profil-nom">{pseudo}</span>
+                </div>
+                <ul className="nav-principale">
+                    <li className="nav-item"><a href="accueil.html"><span className="nav-icon"><i className="fas fa-home"></i></span><span>ACCUEIL</span></a></li>
+                    <li className="nav-item"><a href="communautes.html"><span className="nav-icon"><i className="fas fa-users"></i></span><span>COMMUNAUTES</span></a></li>
+                    <li className="nav-item"><a href="explorer.html"><span className="nav-icon"><i className="fas fa-compass"></i></span><span>EXPLORER</span></a></li>
+                    <li className="nav-item"><a href="messages.html"><span className="nav-icon"><i className="fas fa-envelope"></i></span><span>MESSAGERIE</span></a></li>
+                    <li className="nav-item"><a href="notifications.html"><span className="nav-icon"><i className="fas fa-bell"></i></span><span>NOTIFICATIONS</span></a></li>
+                    <li className="nav-item"><a href={`profil.html?id=${userId}`}><span className="nav-icon"><i className="fas fa-user"></i></span><span>PROFIL</span></a></li>
+                    <li className="nav-item"><a href="parametres.html"><span className="nav-icon"><i className="fas fa-sliders-h"></i></span><span>PARAMETRES</span></a></li>
+                    <li className="nav-item"><a href="recherche.html"><span className="nav-icon"><i className="fas fa-search"></i></span><span>RECHERCHE</span></a></li>
+                    <li className="nav-item"><a href="logout.html"><span className="nav-icon"><i className="fas fa-sign-out-alt"></i></span><span>DECONNEXION</span></a></li>
+                </ul>
+            </aside>
+        );
+    }
+
+    function Parametres() {
+        // État pour la modification du profil
+        const [pseudo, setPseudo] = React.useState('');
+        const [bio, setBio] = React.useState('');
+        const [avatar, setAvatar] = React.useState(null);
+        const [interets, setInterets] = React.useState([]);
+        const [allInterets, setAllInterets] = React.useState([]);
+
+        // État pour la barre de recherche dans les paramètres
+        const [searchTerm, setSearchTerm] = React.useState('');
+        const searchResults = [
+            { titre: "Information du compte", url: "moncompte.html" },
+            { titre: "Supprimer le compte", url: "moncompte.html" },
+            { titre: "Se déconnecter", url: "logout.html" },
+            { titre: "Utilisateurs bloqués", url: "securite.html" },
+            { titre: "Retour signalement", url: "securite.html" },
+            { titre: "Questions fréquentes", url: "questions.html" },
+            { titre: "Conditions d’utilisations", url: "cu.html" },
+            { titre: "Nous contacter", url: "aide.html" }
+        ];
+
+        React.useEffect(() => {
+            apiCall('get_profile').then(p => { setPseudo(p.pseudo); setBio(p.bio || ''); });
+            apiCall('get_interets').then(setAllInterets);
+            apiCall('get_user_interets').then(setInterets);
+        }, []);
+
+        const handleSubmit = async (e) => {
+            e.preventDefault();
+            const fd = new FormData();
+            fd.append('pseudo', pseudo);
+            fd.append('bio', bio);
+            fd.append('interets', JSON.stringify(interets));
+            if (avatar) fd.append('avatar', avatar);
+            await apiCall('update_profile', 'POST', fd);
+            alert('Profil mis à jour');
+            localStorage.setItem('pseudo', pseudo);
+            apiCall('get_profile').then(p => localStorage.setItem('avatar', p.avatar || ''));
+        };
+
+        const filteredResults = searchTerm.trim() === '' ? [] : searchResults.filter(item =>
+            item.titre.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+
+        return (
+            <div className="app-layout">
+                <NavigationSidebar />
+                <div className="content-wrapper">
+                    <main className="feed">
+                        {/* Formulaire de modification du profil */}
+                        <div className="create-post">
+                            <h2>Modifier mon profil</h2>
+                            <form onSubmit={handleSubmit}>
+                                <input value={pseudo} onChange={e => setPseudo(e.target.value)} placeholder="Pseudo" />
+                                <textarea value={bio} onChange={e => setBio(e.target.value)} placeholder="Bio" rows="3"></textarea>
+                                <input type="file" onChange={e => setAvatar(e.target.files[0])} />
+                                <div>Centres d'intérêt :</div>
+                                {allInterets.map(i => (
+                                    <label key={i.id} style={{display:'inline-block', marginRight:'10px', marginBottom:'8px'}}>
+                                        <input type="checkbox" checked={interets.includes(i.id)} onChange={e => {
+                                            if (e.target.checked) setInterets([...interets, i.id]);
+                                            else setInterets(interets.filter(id => id !== i.id));
+                                        }} /> {i.nom}
+                                    </label>
+                                ))}
+                                <button type="submit" className="btn-publier">Enregistrer</button>
+                            </form>
+                        </div>
+
+                        {/* Barre de recherche et liens rapides */}
+                        <div className="create-post">
+                            <h2><i className="fas fa-search"></i> RECHERCHE DANS LES PARAMÈTRES</h2>
+                            <input
+                                type="text"
+                                placeholder="Saisissez un mot-clé (compte, sécurité, aide...)"
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                                style={{width:'100%', padding:'10px', borderRadius:'30px', border:'1px solid #ccc', marginBottom:'16px'}}
+                            />
+                            {filteredResults.length > 0 && (
+                                <div className="results">
+                                    <ul style={{listStyle:'none', paddingLeft:0}}>
+                                        {filteredResults.map((item, idx) => (
+                                            <li key={idx} style={{margin:'8px 0'}}>
+                                                <a href={item.url} style={{textDecoration:'none', color:'#25104D', display:'flex', alignItems:'center', gap:'8px'}}>
+                                                    <i className="fas fa-file-alt"></i> {item.titre}
+                                                </a>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                            {searchTerm && filteredResults.length === 0 && <p>Aucun résultat.</p>}
+                        </div>
+
+                        {/* Liens rapides vers les pages annexes */}
+                        <div className="create-post">
+                            <ul style={{listStyle:'none', paddingLeft:0}}>
+                                <li style={{margin:'12px 0'}}><a href="moncompte.html"><i className="fas fa-user-circle"></i> Mon compte</a></li>
+                                <li style={{margin:'12px 0'}}><a href="securite.html"><i className="fas fa-shield-alt"></i> Confidentialité et sécurité</a></li>
+                                <li style={{margin:'12px 0'}}><a href="info.html"><i className="fas fa-circle-info"></i> Information complémentaire</a></li>
+                                <li style={{margin:'12px 0'}}><a href="aide.html"><i className="fas fa-question-circle"></i> Centre d’aide</a></li>
+                            </ul>
+                        </div>
+                    </main>
+                </div>
+            </div>
+        );
+    }
+
+    apiCall('get_profile').then(() => ReactDOM.createRoot(document.getElementById('root')).render(<Parametres />)).catch(() => window.location='login.html');
+</script>
+</body>
+</html>

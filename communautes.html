@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Communautés - ConnectHub</title>
+    <link rel="stylesheet" href="frontend/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.development.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.development.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.26.0/babel.min.js"></script>
+    <script src="frontend/js/common.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+    function NavigationSidebar() {
+        const userId = localStorage.getItem('userId');
+        const pseudo = localStorage.getItem('pseudo') || 'Utilisateur';
+        const avatarUrl = localStorage.getItem('avatar') ? `uploads/avatars/${localStorage.getItem('avatar')}` : null;
+        const [imgError, setImgError] = React.useState(false);
+        return (
+            <aside className="sidebar">
+                <div className="sidebar-header"><div className="hamburger"><i className="fas fa-bars"></i></div></div>
+                <div className="profil-container">
+                    {avatarUrl && !imgError ? <img src={avatarUrl} className="avatar" onError={() => setImgError(true)} /> : <div className="avatar"><i className="fas fa-user"></i></div>}
+                    <span className="profil-nom">{pseudo}</span>
+                </div>
+                <ul className="nav-principale">
+                    <li className="nav-item"><a href="accueil.html"><span className="nav-icon"><i className="fas fa-home"></i></span><span>ACCUEIL</span></a></li>
+                    <li className="nav-item"><a href="communautes.html"><span className="nav-icon"><i className="fas fa-users"></i></span><span>COMMUNAUTES</span></a></li>
+                    <li className="nav-item"><a href="explorer.html"><span className="nav-icon"><i className="fas fa-compass"></i></span><span>EXPLORER</span></a></li>
+                    <li className="nav-item"><a href="abonnements.html"><span className="nav-icon"><i className="fas fa-user-friends"></i></span><span>ABONNEMENTS</span></a></li>
+                    <li className="nav-item"><a href="messages.html"><span className="nav-icon"><i className="fas fa-envelope"></i></span><span>MESSAGERIE</span></a></li>
+                    <li className="nav-item"><a href="notifications.html"><span className="nav-icon"><i className="fas fa-bell"></i></span><span>NOTIFICATIONS</span></a></li>
+                    <li className="nav-item"><a href={`profil.html?id=${userId}`}><span className="nav-icon"><i className="fas fa-user"></i></span><span>PROFIL</span></a></li>
+                    <li className="nav-item"><a href="parametres.html"><span className="nav-icon"><i className="fas fa-sliders-h"></i></span><span>PARAMETRES</span></a></li>
+                    <li className="nav-item"><a href="recherche.html"><span className="nav-icon"><i className="fas fa-search"></i></span><span>RECHERCHE</span></a></li>
+                    <li className="nav-item"><a href="logout.html"><span className="nav-icon"><i className="fas fa-sign-out-alt"></i></span><span>DECONNEXION</span></a></li>
+                </ul>
+            </aside>
+        );
+    }
+
+    function Communautes() {
+        const [mesCommunautes, setMesCommunautes] = React.useState([]);
+        const [toutes, setToutes] = React.useState([]);
+        const [selectedComm, setSelectedComm] = React.useState(null);
+        const [posts, setPosts] = React.useState([]);
+        
+        // État pour la création de publication avancée
+        const [postType, setPostType] = React.useState('texte');
+        const [postContent, setPostContent] = React.useState('');
+        const [postMedia, setPostMedia] = React.useState(null);
+        const [postLink, setPostLink] = React.useState('');
+        const [pollQuestion, setPollQuestion] = React.useState('');
+        const [pollOptions, setPollOptions] = React.useState('Option1,Option2');
+        
+        // État pour la création de communauté
+        const [newCommName, setNewCommName] = React.useState('');
+        const [newCommDesc, setNewCommDesc] = React.useState('');
+        const [newCommColor, setNewCommColor] = React.useState('#4a90e2');
+        
+        const [membres, setMembres] = React.useState([]);
+        const [showMembres, setShowMembres] = React.useState(false);
+
+        const loadData = async () => {
+            setMesCommunautes(await apiCall('get_mes_communautes'));
+            setToutes(await apiCall('get_all_communautes'));
+        };
+        React.useEffect(() => { loadData(); }, []);
+
+        const handleJoin = async (id) => { const fd = new FormData(); fd.append('communaute_id', id); await apiCall('join_communaute', 'POST', fd); loadData(); };
+        const handleLeave = async (id) => { const fd = new FormData(); fd.append('communaute_id', id); await apiCall('leave_communaute', 'POST', fd); loadData(); if (selectedComm === id) setSelectedComm(null); };
+        const handleCreateComm = async () => {
+            const fd = new FormData(); fd.append('nom', newCommName); fd.append('description', newCommDesc); fd.append('couleur', newCommColor);
+            await apiCall('create_communaute', 'POST', fd);
+            setNewCommName(''); setNewCommDesc(''); loadData();
+        };
+        
+        const loadFeedComm = async (id) => { setSelectedComm(id); setPosts(await apiCall(`get_feed&type=communaute&communaute_id=${id}`)); };
+        
+        const handleCreatePost = async (e) => {
+            e.preventDefault();
+            if (!selectedComm) return;
+            const fd = new FormData();
+            fd.append('contenu', postContent);
+            fd.append('type', postType);
+            fd.append('communaute_id', selectedComm);
+            if (postType === 'lien') fd.append('lien', postLink);
+            if (postType === 'sondage') {
+                fd.append('sondage_question', pollQuestion);
+                fd.append('sondage_options', JSON.stringify(pollOptions.split(',')));
+            }
+            if ((postType === 'image' || postType === 'video') && postMedia) fd.append('media', postMedia);
+            await apiCall('create_post', 'POST', fd);
+            // Réinitialiser le formulaire
+            setPostContent(''); setPostMedia(null); setPostLink(''); setPollQuestion(''); setPollOptions('Option1,Option2');
+            loadFeedComm(selectedComm);
+        };
+        
+        const loadMembres = async (id) => {
+            setMembres(await apiCall(`get_community_members&communaute_id=${id}`));
+            setShowMembres(true);
+        };
+        const setRole = async (userId, role, commId) => {
+            const fd = new FormData(); fd.append('user_id', userId); fd.append('role', role); fd.append('communaute_id', commId);
+            await apiCall('set_community_role', 'POST', fd);
+            loadMembres(commId);
+        };
+        
+        // Composant Publication réutilisé (identique à accueil)
+        function Publication({ post, onLike, onDelete, onComment }) {
+            const [showComments, setShowComments] = React.useState(false);
+            const [comments, setComments] = React.useState([]);
+            const [newComment, setNewComment] = React.useState('');
+            const loadComments = async () => { setComments(await apiCall(`get_comments&post_id=${post.id}`)); };
+            const handleComment = async () => {
+                const fd = new FormData(); fd.append('post_id', post.id); fd.append('contenu', newComment);
+                await apiCall('comment', 'POST', fd);
+                setNewComment(''); loadComments(); onComment();
+            };
+            const handleBookmark = async () => {
+                const fd = new FormData(); fd.append('post_id', post.id);
+                if (post.bookmarked) await apiCall('unbookmark', 'POST', fd);
+                else await apiCall('bookmark', 'POST', fd);
+                onComment();
+            };
+            const [avatarError, setAvatarError] = React.useState(false);
+            return (
+                <div className="post">
+                    <div className="post-header">
+                        {post.avatar && !avatarError ? <img src={`uploads/avatars/${post.avatar}`} className="avatar" style={{width:40,height:40}} onError={() => setAvatarError(true)} /> : <div className="avatar" style={{width:40,height:40}}><i className="fas fa-user"></i></div>}
+                        <a href={`profil.html?id=${post.user_id}`}><b>{post.pseudo}</b></a>
+                    </div>
+                    <div className="post-content">{post.contenu_texte}</div>
+                    {post.fichier_media && (post.type_media === 'image' ? <img src={`uploads/medias/${post.fichier_media}`} className="post-media" /> : <video src={`uploads/medias/${post.fichier_media}`} controls className="post-media" />)}
+                    {post.lien && <a href={post.lien} target="_blank">{post.lien}</a>}
+                    {post.type_media === 'sondage' && post.sondage && (
+                        <div className="poll">
+                            <p><strong>{post.sondage[0].question}</strong></p>
+                            {post.sondage.map(opt => <button key={opt.opt_id} onClick={() => alert('Vote implémenté')}>{opt.option_texte} ({opt.votes} votes)</button>)}
+                        </div>
+                    )}
+                    <div className="post-actions">
+                        <button onClick={() => onLike(post.id)}><i className="fas fa-heart"></i> {post.likes}</button>
+                        <button onClick={() => { setShowComments(!showComments); if(!showComments) loadComments(); }}><i className="fas fa-comment"></i> {post.commentaires}</button>
+                        <button onClick={handleBookmark}>{post.bookmarked ? <i className="fas fa-bookmark"></i> : <i className="far fa-bookmark"></i>}</button>
+                        {localStorage.getItem('userId') == post.user_id && <button onClick={() => onDelete(post.id)}><i className="fas fa-trash"></i></button>}
+                    </div>
+                    {showComments && (
+                        <div className="comments">
+                            {comments.map(c => <div key={c.id}><strong>{c.pseudo}</strong> {c.contenu}</div>)}
+                            <input type="text" placeholder="Ajouter un commentaire..." value={newComment} onChange={e => setNewComment(e.target.value)} />
+                            <button onClick={handleComment}>Envoyer</button>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+        
+        return (
+            <div className="app-layout">
+                <NavigationSidebar />
+                <div className="content-wrapper">
+                    <main className="feed">
+                        {/* Créer une communauté */}
+                        <div className="create-post">
+                            <h3>Créer une communauté</h3>
+                            <input type="text" placeholder="Nom" value={newCommName} onChange={e=>setNewCommName(e.target.value)} />
+                            <input type="text" placeholder="Description" value={newCommDesc} onChange={e=>setNewCommDesc(e.target.value)} />
+                            <input type="color" value={newCommColor} onChange={e=>setNewCommColor(e.target.value)} />
+                            <button className="btn-publier" onClick={handleCreateComm}>Créer</button>
+                        </div>
+                        
+                        <h2>Mes communautés</h2>
+                        {mesCommunautes.map(c => (
+                            <div key={c.id} className="community-card" style={{borderLeft:`5px solid ${c.couleur_theme}`}}>
+                                <h3>{c.nom}</h3>
+                                <p>{c.description}</p>
+                                <button className="btn-publier" onClick={() => loadFeedComm(c.id)}>Voir le feed</button>
+                                <button className="btn-secondaire" onClick={() => loadMembres(c.id)}>Membres</button>
+                                <button className="btn-secondaire" onClick={() => handleLeave(c.id)}>Quitter</button>
+                                {c.is_admin && <button className="btn-publier" onClick={() => window.location.href=`moderation.html?comm=${c.id}`}>Modération</button>}
+                            </div>
+                        ))}
+                        
+                        <h2>Toutes les communautés</h2>
+                        {toutes.map(c => (
+                            <div key={c.id} className="community-card">
+                                <h3>{c.nom}</h3>
+                                <p>{c.description} ({c.membres} membres)</p>
+                                <button className="btn-publier" onClick={() => handleJoin(c.id)}>Rejoindre</button>
+                            </div>
+                        ))}
+                        
+                        {/* Feed et création avancée pour la communauté sélectionnée */}
+                        {selectedComm && (
+                            <div>
+                                <div className="create-post">
+                                    <h3>Publier dans la communauté</h3>
+                                    <form onSubmit={handleCreatePost}>
+                                        <textarea placeholder="Votre message..." value={postContent} onChange={e => setPostContent(e.target.value)}></textarea>
+                                        <select value={postType} onChange={e => setPostType(e.target.value)}>
+                                            <option value="texte">Texte</option>
+                                            <option value="image">Image</option>
+                                            <option value="video">Vidéo</option>
+                                            <option value="lien">Lien</option>
+                                            <option value="sondage">Sondage</option>
+                                        </select>
+                                        {(postType === 'image' || postType === 'video') && <input type="file" accept={postType === 'image' ? 'image/*' : 'video/*'} onChange={e => setPostMedia(e.target.files[0])} />}
+                                        {postType === 'lien' && <input type="url" placeholder="URL" value={postLink} onChange={e => setPostLink(e.target.value)} />}
+                                        {postType === 'sondage' && (
+                                            <div>
+                                                <input type="text" placeholder="Question" value={pollQuestion} onChange={e => setPollQuestion(e.target.value)} />
+                                                <input type="text" placeholder="Options séparées par des virgules" value={pollOptions} onChange={e => setPollOptions(e.target.value)} />
+                                            </div>
+                                        )}
+                                        <button type="submit" className="btn-publier">Publier</button>
+                                    </form>
+                                </div>
+                                {posts.map(post => <Publication key={post.id} post={post} onLike={() => {}} onDelete={() => {}} onComment={() => loadFeedComm(selectedComm)} />)}
+                            </div>
+                        )}
+                        
+                        {/* Modale membres */}
+                        {showMembres && (
+                            <div className="modal" onClick={() => setShowMembres(false)}>
+                                <div className="modal-content" onClick={e => e.stopPropagation()}>
+                                    <h3>Membres</h3>
+                                    {membres.map(m => {
+                                        const foundComm = mesCommunautes.find(c => c.id === selectedComm);
+                                        const isAdmin = foundComm && foundComm.is_admin;
+                                        return (
+                                            <div key={m.id} style={{display:'flex', justifyContent:'space-between', margin:'8px 0'}}>
+                                                <span>{m.pseudo} ({m.role})</span>
+                                                {isAdmin && m.role !== 'admin' && (
+                                                    <select onChange={e => setRole(m.id, e.target.value, selectedComm)} value={m.role}>
+                                                        <option value="membre">Membre</option>
+                                                        <option value="moderateur">Modérateur</option>
+                                                    </select>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                    <button className="btn-publier" onClick={() => setShowMembres(false)}>Fermer</button>
+                                </div>
+                            </div>
+                        )}
+                    </main>
+                </div>
+            </div>
+        );
+    }
+    apiCall('get_profile').then(() => ReactDOM.createRoot(document.getElementById('root')).render(<Communautes />)).catch(() => window.location='login.html');
+</script>
+</body>
+</html>
